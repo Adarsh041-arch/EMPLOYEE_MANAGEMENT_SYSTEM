@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest'
-import { employeeSchema, employeeUpdateSchema, transferSchema } from './employeeSchema'
+import { employeeSchema, employeeUpdateSchema, transferSchema, makeTransferSchema, localToday } from './employeeSchema'
+
+const pad = (n) => String(n).padStart(2, '0')
+const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+const daysFromToday = (n) => {
+  const d = new Date()
+  d.setDate(d.getDate() + n)
+  return iso(d)
+}
+const yearsAgo = (n) => {
+  const d = new Date()
+  d.setFullYear(d.getFullYear() - n)
+  return iso(d)
+}
 
 const valid = {
   fullName: 'Rahul Sharma',
@@ -53,9 +66,30 @@ describe('employeeSchema', () => {
   })
 
   it('rejects a date of birth in the future', () => {
-    const next = new Date()
-    next.setDate(next.getDate() + 2)
-    expect(errorsFor({ ...valid, dateOfBirth: next.toISOString().slice(0, 10) })).toContain('dateOfBirth')
+    expect(errorsFor({ ...valid, dateOfBirth: daysFromToday(2) })).toContain('dateOfBirth')
+  })
+
+  it('needs the employee to be at least 18', () => {
+    expect(errorsFor({ ...valid, dateOfBirth: yearsAgo(17), joiningDate: localToday() })).toContain('dateOfBirth')
+    expect(errorsFor({ ...valid, dateOfBirth: yearsAgo(18), joiningDate: localToday() })).not.toContain('dateOfBirth')
+  })
+
+  it('rejects a date of birth before 1900', () => {
+    expect(errorsFor({ ...valid, dateOfBirth: '1899-12-31' })).toContain('dateOfBirth')
+  })
+
+  it('needs joining date after date of birth and within a year from today', () => {
+    expect(errorsFor({ ...valid, joiningDate: '1998-05-13' })).toContain('joiningDate')
+    expect(errorsFor({ ...valid, joiningDate: daysFromToday(400) })).toContain('joiningDate')
+    expect(errorsFor({ ...valid, joiningDate: daysFromToday(30) })).not.toContain('joiningDate')
+  })
+})
+
+describe('localToday', () => {
+  it('uses the local date, not UTC', () => {
+    const d = new Date()
+    const expected = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    expect(localToday()).toBe(expected)
   })
 })
 
@@ -77,5 +111,12 @@ describe('transferSchema', () => {
     const result = transferSchema.safeParse({ newDepartmentId: '', transferDate: '', reason: ' ' })
     const fields = result.error.issues.map((i) => i.path[0])
     expect(fields).toEqual(expect.arrayContaining(['newDepartmentId', 'transferDate', 'reason']))
+  })
+
+  it('does not allow a transfer before the joining date', () => {
+    const schema = makeTransferSchema('2023-01-10')
+    const base = { newDepartmentId: '2', reason: 'Team change' }
+    expect(schema.safeParse({ ...base, transferDate: '2023-01-09' }).success).toBe(false)
+    expect(schema.safeParse({ ...base, transferDate: '2023-01-10' }).success).toBe(true)
   })
 })

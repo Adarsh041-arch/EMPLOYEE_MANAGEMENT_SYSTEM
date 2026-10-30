@@ -37,6 +37,10 @@ public class TransferService
         if (newDept.Id == emp.DepartmentId)
             throw BadRequestException.ForField("NewDepartmentId", "Employee is already in this department.");
 
+        if (req.TransferDate < emp.JoiningDate)
+            throw BadRequestException.ForField("TransferDate",
+                $"Transfer date can't be before the joining date ({emp.JoiningDate:dd/MM/yyyy}).");
+
         var oldCode = emp.EmployeeCode;
         var oldDept = emp.Department;
         var newCode = await _codeGenerator.NextCodeAsync(newDept.Id);

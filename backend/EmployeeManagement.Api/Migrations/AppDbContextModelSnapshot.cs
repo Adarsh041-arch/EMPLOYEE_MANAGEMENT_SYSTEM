@@ -433,7 +433,7 @@ namespace EmployeeManagement.Api.Migrations
                     b.HasOne("EmployeeManagement.Api.Models.Employee", "Employee")
                         .WithMany("Transfers")
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("EmployeeManagement.Api.Models.Department", "NewDepartment")

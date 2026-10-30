@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { employeesApi, getApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import useLookups from '../hooks/useLookups'
-import { employeeSchema, employeeUpdateSchema } from '../validation/employeeSchema'
+import { employeeSchema, employeeUpdateSchema, localToday } from '../validation/employeeSchema'
 import { formatAadhaarInput } from '../utils/format'
 
 const EMPTY = {
@@ -129,7 +129,7 @@ export default function EmployeeFormPage() {
             <input inputMode="numeric" maxLength={10} {...register('mobile')} />
           </Field>
           <Field label="Date of birth *" error={errors.dateOfBirth}>
-            <input type="date" max={new Date().toISOString().slice(0, 10)} {...register('dateOfBirth')} />
+            <input type="date" min="1900-01-01" max={localToday({ years: -18 })} {...register('dateOfBirth')} />
           </Field>
           <Field label="Gender *" error={errors.gender}>
             <select {...register('gender')}>
@@ -191,7 +191,7 @@ export default function EmployeeFormPage() {
             </select>
           </Field>
           <Field label="Joining date *" error={errors.joiningDate}>
-            <input type="date" {...register('joiningDate')} />
+            <input type="date" max={localToday({ years: 1 })} {...register('joiningDate')} />
           </Field>
           <Field label="Annual salary (₹) *" error={errors.annualSalary}>
             <input type="number" min="1" step="1000" {...register('annualSalary')} />

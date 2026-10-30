@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { employeesApi, getApiError } from '../api/client'
 import useLookups from '../hooks/useLookups'
-import { transferSchema } from '../validation/employeeSchema'
+import { localToday, makeTransferSchema } from '../validation/employeeSchema'
 
 export default function TransferPage() {
   const { id } = useParams()
@@ -12,6 +12,8 @@ export default function TransferPage() {
   const { departments } = useLookups()
   const [employee, setEmployee] = useState(null)
   const [error, setError] = useState('')
+  // the schema needs the joining date, which only arrives after the form is created
+  const joiningDate = useRef(null)
 
   const {
     register,
@@ -19,14 +21,18 @@ export default function TransferPage() {
     setError: setFieldError,
     formState: { errors, isSubmitting },
   } = useForm({
-    resolver: zodResolver(transferSchema),
-    defaultValues: { newDepartmentId: '', transferDate: new Date().toISOString().slice(0, 10), reason: '' },
+    resolver: (values, context, options) =>
+      zodResolver(makeTransferSchema(joiningDate.current))(values, context, options),
+    defaultValues: { newDepartmentId: '', transferDate: localToday(), reason: '' },
   })
 
   useEffect(() => {
     employeesApi
       .get(id)
-      .then(setEmployee)
+      .then((emp) => {
+        joiningDate.current = emp.joiningDate
+        setEmployee(emp)
+      })
       .catch((err) => setError(getApiError(err).message))
   }, [id])
 
@@ -41,7 +47,9 @@ export default function TransferPage() {
       })
     } catch (err) {
       const { message, fields } = getApiError(err)
-      if (fields.newDepartmentId) setFieldError('newDepartmentId', { message: fields.newDepartmentId })
+      for (const name of ['newDepartmentId', 'transferDate', 'reason']) {
+        if (fields[name]) setFieldError(name, { message: fields[name] })
+      }
       setError(message)
     }
   }
@@ -83,7 +91,7 @@ export default function TransferPage() {
           </label>
           <label className={`field${errors.transferDate ? ' has-error' : ''}`}>
             <span>Transfer date *</span>
-            <input type="date" {...register('transferDate')} />
+            <input type="date" min={employee.joiningDate} {...register('transferDate')} />
             {errors.transferDate && <small className="error-text">{errors.transferDate.message}</small>}
           </label>
           <label className={`field field-wide${errors.reason ? ' has-error' : ''}`}>

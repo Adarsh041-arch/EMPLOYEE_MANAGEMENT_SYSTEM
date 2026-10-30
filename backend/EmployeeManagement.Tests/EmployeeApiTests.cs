@@ -399,6 +399,47 @@ public class EmployeeApiTests
     }
 
     [Fact]
+    public async Task Transfer_date_before_joining_date_is_rejected()
+    {
+        var admin = await _factory.AdminClient();
+        var emp = await Create(admin, NewEmployee(departmentId: 1)); // joined 2024-06-01
+
+        var res = await admin.PostAsJsonAsync($"/api/employees/{emp.Id}/transfer", new TransferRequest
+        {
+            NewDepartmentId = 2,
+            TransferDate = new DateOnly(2024, 5, 31),
+            Reason = "Too early"
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        Assert.True(doc.RootElement.GetProperty("errors").TryGetProperty("TransferDate", out _));
+
+        var after = (await admin.GetFromJsonAsync<EmployeeDetails>($"/api/employees/{emp.Id}"))!;
+        Assert.Equal(emp.EmployeeCode, after.EmployeeCode);
+    }
+
+    [Fact]
+    public async Task Hard_delete_is_refused_when_employee_has_transfer_history()
+    {
+        var admin = await _factory.AdminClient();
+        var emp = await Create(admin, NewEmployee(departmentId: 1));
+        var transfer = await admin.PostAsJsonAsync($"/api/employees/{emp.Id}/transfer", new TransferRequest
+        {
+            NewDepartmentId = 3,
+            TransferDate = new DateOnly(2025, 2, 1),
+            Reason = "Moving to finance"
+        });
+        Assert.Equal(HttpStatusCode.OK, transfer.StatusCode);
+
+        var res = await admin.DeleteAsync($"/api/employees/{emp.Id}?hard=true");
+        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+
+        // employee and history are both still there
+        var history = (await admin.GetFromJsonAsync<List<TransferHistoryItem>>($"/api/employees/{emp.Id}/transfers"))!;
+        Assert.Single(history);
+    }
+
+    [Fact]
     public async Task Parallel_transfers_of_one_employee_never_give_500()
     {
         var admin = await _factory.AdminClient();

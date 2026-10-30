@@ -107,8 +107,9 @@ public class AppDbContext : DbContext
             e.Property(x => x.Reason).HasMaxLength(300).IsRequired();
             e.HasIndex(x => x.EmployeeId);
 
+            // Restrict: history is never deleted along with an employee
             e.HasOne(x => x.Employee).WithMany(emp => emp.Transfers)
-                .HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
+                .HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.OldDepartment).WithMany()
                 .HasForeignKey(x => x.OldDepartmentId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.NewDepartment).WithMany()

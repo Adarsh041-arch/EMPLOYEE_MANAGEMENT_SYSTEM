@@ -36,9 +36,13 @@ public class EmployeeRequestValidator : AbstractValidator<EmployeeRequest>
             .Matches("^[A-Z]{5}[0-9]{4}[A-Z]$").WithMessage("PAN must be in the format ABCDE1234F.")
             .When(x => !idNumbersOptional || !string.IsNullOrEmpty(x.Pan));
 
-        RuleFor(x => x.DateOfBirth)
-            .NotNull().WithMessage("Date of birth is required.")
-            .Must(d => d <= DateOnly.FromDateTime(DateTime.Today)).WithMessage("Date of birth cannot be in the future.");
+        RuleFor(x => x.DateOfBirth).NotNull().WithMessage("Date of birth is required.");
+        RuleFor(x => x.DateOfBirth!.Value)
+            .Must(d => d <= Today()).WithMessage("Date of birth cannot be in the future.")
+            .Must(d => d <= Today().AddYears(-18)).WithMessage("Employee must be at least 18 years old.")
+            .Must(d => d >= new DateOnly(1900, 1, 1)).WithMessage("Enter a valid date of birth.")
+            .OverridePropertyName(nameof(EmployeeRequest.DateOfBirth))
+            .When(x => x.DateOfBirth != null);
 
         RuleFor(x => x.Gender)
             .NotEmpty().WithMessage("Gender is required.")
@@ -52,6 +56,11 @@ public class EmployeeRequestValidator : AbstractValidator<EmployeeRequest>
         RuleFor(x => x.RoleId).GreaterThan(0).WithMessage("Role is required.");
 
         RuleFor(x => x.JoiningDate).NotNull().WithMessage("Joining date is required.");
+        RuleFor(x => x.JoiningDate!.Value)
+            .Must(j => j <= Today().AddYears(1)).WithMessage("Joining date can't be more than a year from today.")
+            .Must((x, j) => x.DateOfBirth == null || j > x.DateOfBirth).WithMessage("Joining date must be after the date of birth.")
+            .OverridePropertyName(nameof(EmployeeRequest.JoiningDate))
+            .When(x => x.JoiningDate != null);
 
         RuleFor(x => x.AnnualSalary)
             .GreaterThan(0).WithMessage("Annual salary must be greater than zero.")
@@ -62,6 +71,8 @@ public class EmployeeRequestValidator : AbstractValidator<EmployeeRequest>
             .NotEmpty().WithMessage("Status is required.")
             .Must(s => EmployeeStatus.All.Contains(s)).WithMessage("Status must be Active, Inactive or OnLeave.");
     }
+
+    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.Today);
 }
 
 public class UpdateEmployeeRequestValidator : AbstractValidator<UpdateEmployeeRequest>

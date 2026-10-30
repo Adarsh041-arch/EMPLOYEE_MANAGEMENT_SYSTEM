@@ -212,8 +212,13 @@ public class EmployeeService
             return;
         }
 
+        // transfer history has to be kept, so only employees that were never transferred can be removed
+        if (await _db.EmployeeTransferHistory.AnyAsync(t => t.EmployeeId == id))
+            throw new AppException(StatusCodes.Status409Conflict,
+                "This employee has transfer history, so they can't be deleted permanently. Deactivate them instead.");
+
         await using var tx = await _db.Database.BeginTransactionAsync();
-        // unlink the login account (if any) first; transfer history is removed by cascade
+        // unlink the login account (if any) first
         await _db.Users.Where(u => u.EmployeeId == id)
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.EmployeeId, (int?)null));
         _db.Employees.Remove(emp);

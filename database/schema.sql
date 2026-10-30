@@ -362,3 +362,37 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261030144026_KeepTransferHistoryOnDelete'
+)
+BEGIN
+    ALTER TABLE [EmployeeTransferHistory] DROP CONSTRAINT [FK_EmployeeTransferHistory_Employees_EmployeeId];
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261030144026_KeepTransferHistoryOnDelete'
+)
+BEGIN
+    ALTER TABLE [EmployeeTransferHistory] ADD CONSTRAINT [FK_EmployeeTransferHistory_Employees_EmployeeId] FOREIGN KEY ([EmployeeId]) REFERENCES [Employees] ([Id]) ON DELETE NO ACTION;
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261030144026_KeepTransferHistoryOnDelete'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261030144026_KeepTransferHistoryOnDelete', N'8.0.11');
+END;
+GO
+
+COMMIT;
+GO
+

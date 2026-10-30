@@ -104,6 +104,53 @@ public class EmployeeRequestValidatorTests
         Assert.Contains(nameof(EmployeeRequest.DateOfBirth), ErrorsFor(r));
     }
 
+    [Fact]
+    public void Employee_must_be_at_least_18()
+    {
+        var r = ValidRequest();
+        r.DateOfBirth = DateOnly.FromDateTime(DateTime.Today.AddYears(-17));
+        r.JoiningDate = DateOnly.FromDateTime(DateTime.Today);
+        Assert.Contains(nameof(EmployeeRequest.DateOfBirth), ErrorsFor(r));
+
+        r.DateOfBirth = DateOnly.FromDateTime(DateTime.Today.AddYears(-18));
+        Assert.DoesNotContain(nameof(EmployeeRequest.DateOfBirth), ErrorsFor(r));
+    }
+
+    [Fact]
+    public void Very_old_date_of_birth_is_rejected()
+    {
+        var r = ValidRequest();
+        r.DateOfBirth = new DateOnly(1899, 12, 31);
+        Assert.Contains(nameof(EmployeeRequest.DateOfBirth), ErrorsFor(r));
+    }
+
+    [Fact]
+    public void Joining_date_must_be_after_date_of_birth()
+    {
+        var r = ValidRequest();
+        r.JoiningDate = r.DateOfBirth!.Value.AddDays(-1);
+        Assert.Contains(nameof(EmployeeRequest.JoiningDate), ErrorsFor(r));
+    }
+
+    [Fact]
+    public void Joining_date_cannot_be_more_than_a_year_ahead()
+    {
+        var r = ValidRequest();
+        r.JoiningDate = DateOnly.FromDateTime(DateTime.Today.AddYears(1).AddDays(1));
+        Assert.Contains(nameof(EmployeeRequest.JoiningDate), ErrorsFor(r));
+
+        r.JoiningDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(2));
+        Assert.DoesNotContain(nameof(EmployeeRequest.JoiningDate), ErrorsFor(r));
+    }
+
+    [Fact]
+    public void Missing_date_of_birth_gives_one_error()
+    {
+        var r = ValidRequest();
+        r.DateOfBirth = null;
+        Assert.Single(ErrorsFor(r), nameof(EmployeeRequest.DateOfBirth));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-100)]
