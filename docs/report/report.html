@@ -157,7 +157,7 @@
   <li><b>Unique constraints</b> on <code>EmployeeCode</code>, <code>Email</code>, department name and prefix, role name and username.</li>
   <li><b>Check constraints</b> on salary (&gt; 0), status and gender.</li>
   <li><b>Indexes</b> on the columns used for filtering and sorting, so searches and paging stay fast.</li>
-  <li><b>Delete rules:</b> deleting an employee removes their personal details and transfer history (cascade). Departments and roles can't be deleted while employees use them (restrict).</li>
+  <li><b>Delete rules:</b> deleting an employee removes their personal details (cascade), but transfer history is protected (restrict), so an employee who has been transferred can only be deactivated. Departments and roles can't be deleted while employees use them (restrict).</li>
 </ul>
 <p>The schema is created by the EF Core migration (<code>backend/EmployeeManagement.Api/Migrations</code>). The same thing is available as a plain script in <code>database/schema.sql</code>. Sample data is in <code>database/seed.sql</code>: 5 departments, 5 roles, 22 employees spread over every department, role, salary band and status, 3 users and 4 transfer history rows. I checked that both scripts run on an empty database.</p>
 
@@ -190,7 +190,7 @@ WHERE DepartmentId = @departmentId</pre>
   <tr><td>GET</td><td>/api/employees/{id}/personal-details</td><td>all</td><td>Aadhaar/PAN masked unless Admin</td></tr>
   <tr><td>POST</td><td>/api/employees</td><td>Admin, Manager</td><td>Create; returns 201 with the generated code</td></tr>
   <tr><td>PUT</td><td>/api/employees/{id}</td><td>Admin, Manager</td><td>Update; blank Aadhaar/PAN keeps the stored values</td></tr>
-  <tr><td>DELETE</td><td>/api/employees/{id}</td><td>Admin</td><td>Deactivate; <code>?hard=true</code> deletes permanently</td></tr>
+  <tr><td>DELETE</td><td>/api/employees/{id}</td><td>Admin</td><td>Deactivate; <code>?hard=true</code> deletes permanently if there is no transfer history (otherwise 409)</td></tr>
   <tr><td>POST</td><td>/api/employees/{id}/transfer</td><td>Admin, Manager</td><td>Transfer to another department</td></tr>
   <tr><td>GET</td><td>/api/employees/{id}/transfers</td><td>all</td><td>Transfer history</td></tr>
   <tr><td>GET</td><td>/api/departments, /api/roles</td><td>all</td><td>Dropdown data</td></tr>
@@ -208,12 +208,13 @@ WHERE DepartmentId = @departmentId</pre>
   <tr><td>Mobile</td><td>Exactly 10 digits</td></tr>
   <tr><td>Aadhaar</td><td>Exactly 12 digits; the form formats it as XXXX-XXXX-XXXX while typing; dashes or spaces are accepted by the API</td></tr>
   <tr><td>PAN</td><td><code>^[A-Z]{5}[0-9]{4}[A-Z]$</code> (ABCDE1234F); the form changes it to upper case while typing</td></tr>
-  <tr><td>Date of birth</td><td>Required, not in the future</td></tr>
+  <tr><td>Date of birth</td><td>Required, not in the future, at least 18 years old, not before 1900</td></tr>
   <tr><td>Gender / Status</td><td>Required, must be one of the allowed values</td></tr>
   <tr><td>Department / Role</td><td>Required, must exist</td></tr>
-  <tr><td>Joining date, Address</td><td>Required</td></tr>
+  <tr><td>Joining date</td><td>Required, after the date of birth, at most one year from today</td></tr>
+  <tr><td>Address</td><td>Required, max 300</td></tr>
   <tr><td>Annual salary</td><td>Greater than zero</td></tr>
-  <tr><td>Transfer</td><td>New department, date and reason required; new department must differ from the current one</td></tr>
+  <tr><td>Transfer</td><td>New department, date and reason required; new department must differ from the current one; transfer date can't be before the joining date</td></tr>
   <tr><td>List query</td><td>pageSize 5/10/20, pageNumber &ge; 1, minSalary &le; maxSalary, known sortBy/sortDir</td></tr>
 </table>
 
@@ -242,8 +243,8 @@ WHERE DepartmentId = @departmentId</pre>
 
 <h2>10. Testing</h2>
 <ul>
-  <li><b>Backend: 61 xUnit tests</b> (<code>cd backend &amp;&amp; dotnet test</code>). 30 are unit tests for the validators and the encryption/masking helper. 31 are API tests that start the real API in memory against a separate SQL Server database (<code>EmployeeManagement_Test</code>, re-created on each run). They cover code generation, 10 parallel creates in one department, transfers (new code, same Id, history row, same-department rejection, two parallel transfers of one employee), duplicate email (409), validation errors (400), unknown id (404), role restrictions (401/403), masking, search fields (including the check that Aadhaar/PAN are <i>not</i> searched), filter combinations, paging consistency and sorting.</li>
-  <li><b>Frontend: 28 Vitest tests</b> (<code>cd frontend &amp;&amp; npm test</code>) for the zod form rules, Aadhaar formatting and the salary presets.</li>
+  <li><b>Backend: 68 xUnit tests</b> (<code>cd backend &amp;&amp; dotnet test</code>). 35 are unit tests for the validators and the encryption/masking helper. 33 are API tests that start the real API in memory against a separate SQL Server database (<code>EmployeeManagement_Test</code>, re-created on each run). They cover code generation, 10 parallel creates in one department, transfers (new code, same Id, history row, same-department rejection, two parallel transfers of one employee, transfer date before joining), duplicate email (409), validation errors (400), unknown id (404), role restrictions (401/403), masking, search fields (including the check that Aadhaar/PAN are <i>not</i> searched), filter combinations, paging consistency and sorting.</li>
+  <li><b>Frontend: 33 Vitest tests</b> (<code>cd frontend &amp;&amp; npm test</code>) for the zod form rules (including the date checks and local-time "today"), Aadhaar formatting and the salary presets.</li>
   <li><b>End-to-end:</b> I also drove the running app with a headless browser through login, sorting, filters, a refresh with filters set, the form errors, create, duplicate email, transfer, editing as a manager, the Employee role view, phone width and Swagger. The screenshots above come from that run.</li>
 </ul>
 
@@ -282,7 +283,7 @@ WHERE DepartmentId = @departmentId</pre>
 
 <h2>13. Assumptions</h2>
 <ul>
-  <li>"Delete" deactivates an employee so their history isn't lost. Admins can still delete permanently.</li>
+  <li>"Delete" deactivates an employee so their history isn't lost. Admins can still delete permanently, but only employees who have never been transferred.</li>
   <li>A department can only change through a transfer, never through Edit, so the code and history always match.</li>
   <li>Salary presets are lower-inclusive and upper-exclusive, as in the brief (₹3,00,000 belongs to "3–5 LPA"). The API's min/max filters are inclusive, so the UI sends ₹2,99,999.99 as the upper limit for "1–3 LPA".</li>
   <li>The Employee role is linked to one employee record and can only read that record.</li>

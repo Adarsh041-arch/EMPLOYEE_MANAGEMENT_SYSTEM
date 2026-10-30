@@ -137,14 +137,14 @@ cd backend
 dotnet test
 ```
 
-There are 61 tests. The API tests start the real API in memory and run it against a separate database, `EmployeeManagement_Test`, on `.\SQLEXPRESS`. That database is dropped and re-created on each run. They cover code generation (including 10 parallel creates in one department), transfers (including two parallel transfers of the same employee), search/filter/paging, roles and validation errors.
+There are 68 tests. The API tests start the real API in memory and run it against a separate database, `EmployeeManagement_Test`, on `.\SQLEXPRESS`. That database is dropped and re-created on each run. They cover code generation (including 10 parallel creates in one department), transfers (including two parallel transfers of the same employee), search/filter/paging, roles and validation errors.
 
 ```
 cd frontend
 npm test
 ```
 
-These are 28 tests for the form validation rules, Aadhaar auto-formatting and the salary range presets.
+These are 33 tests for the form validation rules (including the date checks), Aadhaar auto-formatting and the salary range presets.
 
 ## API overview
 
@@ -158,7 +158,7 @@ All endpoints except login need `Authorization: Bearer <token>`.
 | GET | /api/employees/{id}/personal-details | all roles | Aadhaar/PAN masked unless Admin |
 | POST | /api/employees | Admin, Manager | employee code is generated |
 | PUT | /api/employees/{id} | Admin, Manager | department changes go through transfer |
-| DELETE | /api/employees/{id} | Admin | sets status to Inactive; `?hard=true` deletes |
+| DELETE | /api/employees/{id} | Admin | sets status to Inactive; `?hard=true` deletes, but only if the employee has no transfer history |
 | POST | /api/employees/{id}/transfer | Admin, Manager | new department gives a new code, same Id |
 | GET | /api/employees/{id}/transfers | all roles | transfer history |
 | GET | /api/departments, /api/roles | all roles | dropdown data |
@@ -230,7 +230,7 @@ Frontend (`frontend/package.json`, exact versions in `package-lock.json`):
 
 ## Assumptions and decisions
 
-- "Delete" deactivates the employee (status becomes Inactive) so their history is kept. Admins can still delete permanently with `?hard=true`.
+- "Delete" deactivates the employee (status becomes Inactive) so their history is kept. Admins can still delete permanently with `?hard=true`, but only employees who were never transferred, so transfer history is never lost (otherwise 409).
 - A department can't be changed through Edit. It has to go through Transfer so the code and history stay correct.
 - When editing, Aadhaar/PAN can be left blank to keep the stored values. Managers only see masked values, so they couldn't send the originals back anyway.
 - The salary presets follow the brief: "₹1–3 LPA" means ₹1,00,000 up to but not including ₹3,00,000. The API's `minSalary`/`maxSalary` are both inclusive, so the frontend sends ₹2,99,999.99 as the max for that preset.
