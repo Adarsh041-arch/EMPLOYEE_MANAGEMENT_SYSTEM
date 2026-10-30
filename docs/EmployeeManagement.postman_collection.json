@@ -1,0 +1,253 @@
+{
+  "info": {
+    "name": "Employee Management API",
+    "description": "Run \"Login (admin)\" first - it saves the token into the collection variable used by every other request.\nStart the API with `dotnet run` (http://localhost:5005).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5005" },
+    { "key": "token", "value": "" },
+    { "key": "employeeId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin@123\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login (manager)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.collectionVariables.set('token', pm.response.json().token);"], "type": "text/javascript" }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"manager\",\n  \"password\": \"Manager@123\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login (employee)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.collectionVariables.set('token', pm.response.json().token);"], "type": "text/javascript" }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"employee\",\n  \"password\": \"Employee@123\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Employees",
+      "item": [
+        {
+          "name": "Get all (search, filter, sort, page)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/employees?search=Rahul&departmentId=2&minSalary=300000&maxSalary=1000000&sortBy=name&sortDir=asc&pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees"],
+              "query": [
+                { "key": "search", "value": "Rahul" },
+                { "key": "departmentId", "value": "2" },
+                { "key": "roleId", "value": "", "disabled": true },
+                { "key": "status", "value": "Active", "disabled": true, "description": "Active, Inactive or OnLeave" },
+                { "key": "gender", "value": "Male", "disabled": true, "description": "Male, Female or Other" },
+                { "key": "joiningFrom", "value": "2020-01-01", "disabled": true },
+                { "key": "joiningTo", "value": "2024-12-31", "disabled": true },
+                { "key": "minSalary", "value": "300000" },
+                { "key": "maxSalary", "value": "1000000" },
+                { "key": "sortBy", "value": "name", "description": "code, name, department, role, email, mobile, salary, joiningDate, status" },
+                { "key": "sortDir", "value": "asc", "description": "asc or desc" },
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10", "description": "5, 10 or 20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Example query from the brief",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/employees?search=Rahul&departmentId=1&minSalary=300000&maxSalary=500000&pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees"],
+              "query": [
+                { "key": "search", "value": "Rahul" },
+                { "key": "departmentId", "value": "1" },
+                { "key": "minSalary", "value": "300000" },
+                { "key": "maxSalary", "value": "500000" },
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get by id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/employees/{{employeeId}}", "host": ["{{baseUrl}}"], "path": ["api", "employees", "{{employeeId}}"] }
+          }
+        },
+        {
+          "name": "Get personal details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}/personal-details",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", "{{employeeId}}", "personal-details"]
+            }
+          }
+        },
+        {
+          "name": "Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('employeeId', pm.response.json().id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Aditi Rane\",\n  \"email\": \"aditi.rane@company.in\",\n  \"mobile\": \"9823456781\",\n  \"gender\": \"Female\",\n  \"aadhaar\": \"4432-1987-6650\",\n  \"pan\": \"CKRPR7712M\",\n  \"dateOfBirth\": \"1997-08-21\",\n  \"address\": \"14 Baner Road, Pune\",\n  \"departmentId\": 1,\n  \"roleId\": 1,\n  \"joiningDate\": \"2025-02-03\",\n  \"annualSalary\": 620000,\n  \"status\": \"Active\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/employees", "host": ["{{baseUrl}}"], "path": ["api", "employees"] }
+          }
+        },
+        {
+          "name": "Create - validation errors (400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Aditi 2\",\n  \"email\": \"aditi\",\n  \"mobile\": \"98234\",\n  \"gender\": \"Female\",\n  \"aadhaar\": \"4432-1987\",\n  \"pan\": \"ckrpr7712\",\n  \"dateOfBirth\": \"2099-01-01\",\n  \"address\": \"Pune\",\n  \"departmentId\": 1,\n  \"roleId\": 1,\n  \"joiningDate\": \"2025-02-03\",\n  \"annualSalary\": 0,\n  \"status\": \"Active\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/employees", "host": ["{{baseUrl}}"], "path": ["api", "employees"] }
+          }
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "description": "Aadhaar and PAN can be left empty to keep the stored values. Department cannot change here - use Transfer.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Aditi Rane\",\n  \"email\": \"aditi.rane@company.in\",\n  \"mobile\": \"9823456781\",\n  \"gender\": \"Female\",\n  \"aadhaar\": \"\",\n  \"pan\": \"\",\n  \"dateOfBirth\": \"1997-08-21\",\n  \"address\": \"14 Baner Road, Pune\",\n  \"departmentId\": 1,\n  \"roleId\": 3,\n  \"joiningDate\": \"2025-02-03\",\n  \"annualSalary\": 680000,\n  \"status\": \"Active\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/employees/{{employeeId}}", "host": ["{{baseUrl}}"], "path": ["api", "employees", "{{employeeId}}"] }
+          }
+        },
+        {
+          "name": "Transfer to HR",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newDepartmentId\": 2,\n  \"transferDate\": \"2025-11-01\",\n  \"reason\": \"Moving to the HR systems team\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}/transfer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", "{{employeeId}}", "transfer"]
+            }
+          }
+        },
+        {
+          "name": "Transfer history",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}/transfers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", "{{employeeId}}", "transfers"]
+            }
+          }
+        },
+        {
+          "name": "Deactivate",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/employees/{{employeeId}}", "host": ["{{baseUrl}}"], "path": ["api", "employees", "{{employeeId}}"] }
+          }
+        },
+        {
+          "name": "Delete permanently (Admin)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}?hard=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", "{{employeeId}}"],
+              "query": [{ "key": "hard", "value": "true" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lookups",
+      "item": [
+        {
+          "name": "Departments",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/departments", "host": ["{{baseUrl}}"], "path": ["api", "departments"] } }
+        },
+        {
+          "name": "Roles",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/roles", "host": ["{{baseUrl}}"], "path": ["api", "roles"] } }
+        }
+      ]
+    }
+  ]
+}
